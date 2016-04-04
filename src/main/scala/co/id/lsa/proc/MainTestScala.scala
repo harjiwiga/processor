@@ -53,7 +53,7 @@ object MainTestScala {
       println("\nb:" + b)
       arr.foreach(println)
       //    println("\nid cust: "+customer.myFirstMethod())
-      var exMap = mutable.HashMap("ab" -> "1", "abc" -> "2", "abcd" -> "3", "klm" -> "4","xyz" -> "4")
+      var exMap = mutable.HashMap("ab" -> "1", "abc" -> "2", "abcd" -> "3", "klm" -> "4","xyz" -> "4","xyz/23e"->"55")
       //        exMap.isInstanceOf[Map]
       //      exMap.retain((k, v) => k.equals(e))
       //      exMap.foreach(x=>x._1)

@@ -4,6 +4,7 @@ import org.apache.hadoop.hbase.client.HBaseAdmin
 import org.apache.spark.{SparkConf, SparkContext}
 import unicredit.spark.hbase.HBaseConfig
 import unicredit.spark.hbase._
+import scala.collection.mutable.ArrayBuffer
 
 
 /**
@@ -17,7 +18,6 @@ object MainHbaseProcess {
 
    def main(args: Array[String]) {
 
-
       implicit val config = HBaseConfig()
       val hbasecon = config.get
       hbasecon.addResource("processor-conf.xml")
@@ -28,8 +28,7 @@ object MainHbaseProcess {
       if (hbaseAdmin.isTableAvailable(tablename2)) {
 
          val families = Set("f", "prod", "comm_t")
-         val columns = Map(
-            "prod" -> Set("desc", "sn")
+         val columns = Map("prod" -> Set("desc", "sn")
          )
          val tableRdd2 = jsc.hbaseTS[String](tablename2, families)
          //      val rddpart = tableRdd2.partitions
@@ -37,25 +36,59 @@ object MainHbaseProcess {
 
          val rddfiltered = tableRdd2.filter(x => x._2.get("prod").exists(_.get("sn").nonEmpty))
 
+         var smalest = 1000
          val rddconverted = rddfiltered.map { eachVal => {
             val sn = eachVal._2.get("prod").get("sn")._1.filter(v => !v.equals(""))
             val cat = eachVal._2.get("prod").get("cat")._1
             val newVal = sn.replace("rb", "00").replace(",", "")
             val prot = eachVal._2.get("f").get("prot")._1
-            val price = eachVal._2.get("prod").get("prc")._1
+            val price = eachVal._2.get("prod").get("prc")._1.replace("Rp", "").trim.replace(".", "")
+            val kLength = eachVal._1.trim.length
 
-            (eachVal._1, cat, newVal, prot, price)
-            }
+            var lengthArr = ArrayBuffer[Int]()
+            lengthArr += kLength
+
+            Map("rk" -> eachVal._1, "cat" -> cat, "sn" -> newVal, "prot" -> prot, "pr" -> price,"le"->lengthArr)
+         }
          }
 
-
          rddfiltered.foreach(i => println("filtered_data:" + (i._2.get("prod").get("sn")._1)))
+         rddconverted.foreach(i => println("convertedData: " + i))
 
-         rddconverted.foreach(i => println("convertedData: " + i._5))
+         var arrKeys = ArrayBuffer[String]()
+
+         rddconverted.foreach(el => {
+             (arrKeys :+= (el.get("rk").mkString))})
+
+
+
+//         val maxKey = rddconverted.
+         println("VALARRAY: "+arrKeys)
+//
+//         val rddlenghtkey = rddconverted.reduce((k,v) => )
+         val rddGrouped = rddconverted.groupBy(x => {
+            //need improvement
+            var key = x.get("rk").mkString; key.substring(0,80)
+         })
+
+         rddGrouped.foreach(x => println("rddgrouped: "+x._2))
+         val in4 = Array(
+            Map("rk" -> "ab",  "cat" -> "camera", "sn" -> 6000, "prot" -> 1, "pr" -> 1400000),
+            Map("rk" -> "abc",  "cat" -> "camera", "sn" -> 6000, "prot" -> 1, "pr" -> 1400000),
+            Map("rk" -> "abcD",  "cat" -> "camera", "sn" -> 6000),
+            Map("rk" -> "kl",  "cat" -> "camera", "sn" -> 6000, "prot" -> 1, "pr" -> 1400000),
+            Map("rk" -> "klmn",  "cat" -> "camera", "prot" -> 1, "pr" -> 1400000)
+         )
+
+         var arrkey = ArrayBuffer[String]()
+         in4.foreach(x => arrkey += x.get("rk").mkString)
+
+
+         println("ARKEY: "+arrkey)
+
          println("valuess:" + rddfiltered.count())
          println("class rdd: " + tableRdd2.getClass)
       }
-
 
       hbaseAdmin.close();
       jsc.stop();
@@ -65,4 +98,21 @@ object MainHbaseProcess {
    def convert(sn: String): String = {
       sn.replace(",", "").replace("rb", "00")
    }
+
+
+   /**
+     * This method merge map within list
+     *
+     * @param ms
+     * @param f
+     * @tparam A
+     * @tparam B
+     * @return
+     * ref: http://stackoverflow.com/questions/1262741/scala-how-to-merge-a-collection-of-maps
+     * by Walter Chang
+     */
+   def mergeMap[A, B](ms: List[Map[A, B]])(f: (B, B) => B): Map[A, B] =
+      (Map[A, B]() /: (for (m <- ms; kv <- m) yield kv)) { (a, kv) =>
+         a + (if (a.contains(kv._1)) kv._1 -> f(a(kv._1), kv._2) else kv)
+      }
 }
