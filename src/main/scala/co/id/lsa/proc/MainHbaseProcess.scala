@@ -25,6 +25,9 @@ object MainHbaseProcess {
       println("hbase.rootdir:" + hbasecon.get("hbase.rootdir"))
       val hbaseAdmin = new HBaseAdmin(hbasecon)
 
+      val table = "test-table"
+      val families = Set("cf1", "cf2")
+
       if (hbaseAdmin.isTableAvailable(tablename2)) {
 
          val families = Set("f", "prod", "comm_t")
@@ -48,7 +51,7 @@ object MainHbaseProcess {
             var lengthArr = ArrayBuffer[Int]()
             lengthArr += kLength
 
-            Map("rk" -> eachVal._1, "cat" -> cat, "sn" -> newVal, "prot" -> prot, "pr" -> price,"le"->lengthArr)
+            Map("rk" -> eachVal._1, "cat" -> cat, "sn" -> newVal, "prot" -> prot, "pr" -> price)
          }
          }
 
@@ -57,34 +60,22 @@ object MainHbaseProcess {
 
          var arrKeys = ArrayBuffer[String]()
 
-         rddconverted.foreach(el => {
-             (arrKeys :+= (el.get("rk").mkString))})
-
-
-
 //         val maxKey = rddconverted.
          println("VALARRAY: "+arrKeys)
 //
 //         val rddlenghtkey = rddconverted.reduce((k,v) => )
          val rddGrouped = rddconverted.groupBy(x => {
-            //need improvement
+            //need improve to get substring index by the shortest key
             var key = x.get("rk").mkString; key.substring(0,80)
          })
 
+//          val rddMaped = rddGrouped.map(x => x._2.reduce(_++:_))// need improvement
+
+         rddGrouped.map(x => x._2.reduce(_++:_))
          rddGrouped.foreach(x => println("rddgrouped: "+x._2))
-         val in4 = Array(
-            Map("rk" -> "ab",  "cat" -> "camera", "sn" -> 6000, "prot" -> 1, "pr" -> 1400000),
-            Map("rk" -> "abc",  "cat" -> "camera", "sn" -> 6000, "prot" -> 1, "pr" -> 1400000),
-            Map("rk" -> "abcD",  "cat" -> "camera", "sn" -> 6000),
-            Map("rk" -> "kl",  "cat" -> "camera", "sn" -> 6000, "prot" -> 1, "pr" -> 1400000),
-            Map("rk" -> "klmn",  "cat" -> "camera", "prot" -> 1, "pr" -> 1400000)
-         )
 
-         var arrkey = ArrayBuffer[String]()
-         in4.foreach(x => arrkey += x.get("rk").mkString)
+//         rddMaped.foreach(m => println("mp: "+m));
 
-
-         println("ARKEY: "+arrkey)
 
          println("valuess:" + rddfiltered.count())
          println("class rdd: " + tableRdd2.getClass)
